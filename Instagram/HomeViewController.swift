@@ -73,6 +73,11 @@ class HomeViewController: UIViewController, UITableViewDataSource, UITableViewDe
             // セル内のボタンのアクションをソースコードで設定する
             cell.likeButton.addTarget(self, action:#selector(handleLikeButton(_:)), for: .touchUpInside)
 
+            // 🔽 コメントボタンのアクションとタグ設定を追加
+                    cell.commentButton.tag = indexPath.row
+                    cell.commentButton.addTarget(self, action: #selector(handleCommentButton(_:)), for: .touchUpInside)
+
+            
             return cell
         }
 
@@ -102,5 +107,41 @@ class HomeViewController: UIViewController, UITableViewDataSource, UITableViewDe
                 let postRef = Firestore.firestore().collection(Const.PostPath).document(postData.id)
                 postRef.updateData(["likes": updateValue])
             }
+        }
+    
+    
+    
+    // 🔽 コメントボタンがタップされた時
+        @objc func handleCommentButton(_ sender: UIButton) {
+            let postData = postArray[sender.tag]
+
+            let alert = UIAlertController(title: "コメント", message: "コメントを入力してください", preferredStyle: .alert)
+            alert.addTextField(configurationHandler: nil)
+
+            let postAction = UIAlertAction(title: "投稿", style: .default) { _ in
+                guard let commentText = alert.textFields?.first?.text, !commentText.isEmpty,
+                      let name = Auth.auth().currentUser?.displayName else {
+                    return
+                }
+
+                let newComment = "\(name) : \(commentText)"
+                let postRef = Firestore.firestore().collection(Const.PostPath).document(postData.id)
+
+                // Firestoreにコメントを追加
+                postRef.updateData([
+                    "comments": FieldValue.arrayUnion([newComment])
+                ]) { error in
+                    if let error = error {
+                        print("DEBUG_PRINT: コメントの投稿に失敗しました: \(error)")
+                    } else {
+                        print("DEBUG_PRINT: コメントを投稿しました")
+                    }
+                }
+            }
+
+            alert.addAction(postAction)
+            alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel, handler: nil))
+
+            self.present(alert, animated: true, completion: nil)
         }
 }
